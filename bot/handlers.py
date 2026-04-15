@@ -62,17 +62,23 @@ async def handle_update(bot: Bot, update: Update):
 
 async def handle_quick_entry(bot: Bot, chat_id: int, text: str, username: str):
     """Parse free-text message and save as customer record."""
-    await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+    try:
+        await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+    except Exception:
+        pass  # Ignore typing indicator errors
 
     parsed = parse_customer_text(text)
     if not parsed:
-        await bot.send_message(
-            chat_id=chat_id,
-            text="❌ Mesaji anlayamadim. Ornek:\n\"30lu hispanic kadin, elbise denedi, almadi\"",
-        )
+        try:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="❌ Mesaji anlayamadim. Ornek:\n\"30lu hispanic kadin, elbise denedi, almadi\"",
+            )
+        except Exception:
+            pass
         return
 
-    # Save to database
+    # Save to database first (before sending response)
     record = {
         "recorded_by": username,
         "input_mode": "quick",
@@ -83,16 +89,22 @@ async def handle_quick_entry(bot: Bot, chat_id: int, text: str, username: str):
         db.insert_customer(record)
     except Exception as e:
         print(f"DB insert error: {e}")
-        await bot.send_message(chat_id=chat_id, text=msg.ERROR_MESSAGE)
+        try:
+            await bot.send_message(chat_id=chat_id, text=msg.ERROR_MESSAGE)
+        except Exception:
+            pass
         return
 
     # Show formatted result with confirm keyboard
     result_text = format_parsed_result(parsed)
-    await bot.send_message(
-        chat_id=chat_id,
-        text=result_text,
-        reply_markup=kb.confirm_keyboard(),
-    )
+    try:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=result_text,
+            reply_markup=kb.confirm_keyboard(),
+        )
+    except Exception as e:
+        print(f"Telegram send error (record saved): {e}")
 
 
 # --- Detailed Mode ---
