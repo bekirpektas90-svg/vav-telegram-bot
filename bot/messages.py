@@ -56,4 +56,3 @@ ERROR_MESSAGE = "❌ Bir hata olustu. Lutfen tekrar dene."
 
 ANALYZING = "🔄 Analiz ediliyor..."
 GENERATING_REPORT = "🔄 Rapor olusturuluyor..."
-"""
