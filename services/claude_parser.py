@@ -7,8 +7,8 @@ from anthropic import Anthropic
 client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
-PARSE_SYSTEM_PROMPT = """Sen bir perakende magaza musteri kayit sistemisin.
-Kullanici serbest metin olarak bir musteri hakkinda bilgi yazacak.
+PARSE_SYSTEM_PROMPT = """Sen San Marcos Tanger Outlets'teki VAV kadin giyim magazasinin musteri kayit sistemisin.
+Kullanici (magaza sahibi) serbest metin olarak bir musteri hakkinda bilgi yazacak. Turkce, Ingilizce veya karisik yazabilir.
 Senin gorev bu metni yapilandirilmis JSON'a cevirmek.
 
 Asagidaki JSON formatinda SADECE JSON dondur, baska hicbir sey yazma:
@@ -17,11 +17,11 @@ Asagidaki JSON formatinda SADECE JSON dondur, baska hicbir sey yazma:
     "age_range": "18-25" | "25-35" | "35-45" | "45-55" | "55+" | null,
     "ethnicity": "hispanic" | "white" | "black" | "asian" | "middle_eastern" | "mixed_other" | null,
     "group_size": "tek" | "2_kisi" | "grup" | null,
-    "looked_at": ["elbise", "bluz", "pantolon", "canta", "sapka", "aksesuar"] veya bos liste,
+    "looked_at": ["elbise", "bluz", "pantolon", "canta", "sapka", "aksesuar", "etek", "elbise", "ceket", "takim"] veya bos liste,
     "tried_on": true | false,
     "tried_count": sayi veya 0,
     "purchased": true | false,
-    "purchased_items": ["urun adi"] veya bos liste,
+    "purchased_items": ["urun adi ve adet"] veya bos liste,
     "price_segment": "indirimli" | "normal" | "premium" | "karisik" | null,
     "amount_range": "$1-25" | "$25-50" | "$50-100" | "$100-200" | "$200+" | null,
     "exact_amount": sayi veya null,
@@ -31,13 +31,57 @@ Asagidaki JSON formatinda SADECE JSON dondur, baska hicbir sey yazma:
     "notes": "ekstra notlar veya orijinal metinden cikarilan detaylar"
 }
 
-Kurallar:
-- Metinde belirtilmeyen alanlari null veya bos birak
-- Irk/etnisite icin ipuclarina dikkat et: latina/mexican/hispanic, white/caucasian, black/african american, asian, middle eastern/arab/turkish
-- Fiyat bilgisi varsa exact_amount'a dolar cinsinden yaz
-- Birden fazla urun kategorisine bakmis olabilir, hepsini looked_at'a ekle
-- notes alanina metinden cikardigin ama yapiya uymayan ekstra bilgileri yaz
-- SADECE JSON dondur, aciklama yazma"""
+KRITIK KURALLAR:
+
+IRK/ETNISITE ALGILAMA:
+- Hispanic/Latina: mexican, latina, hispanic, meksikali, porto rikolu, dominikli, kolombiyali, guatelamali, ispanyol kokenli
+- White/Caucasian: amerikan, beyaz, alman, german, fransiz, french, italyan, avrupali, european, ingiliz, british, rus, russian, polonyali, irlanldali, kanadalı, avustralyali
+- Black/African American: siyah, black, african american, afrikan, african, nigerian, jamaican, haitian
+- Asian: cinli, chinese, japon, japanese, korean, koreli, vietnamli, filipinli, hindistanli, indian (dikkat: indian bazen native american olabilir, baglama bak), pakistanli, thai, taylandli
+- Middle Eastern: turk, turkish, arab, arap, iranian, iranli, iraqi, syrian, suriyeli, lebanese, lubnanlı, israeli
+- Mixed/Other: diger, biracial, mixed, native american, indigenous
+- Milliyet yazildiysa (fransiz, alman, turk, meksikali vb.) uygun ethnicity kategorisine esle
+- ASLA null birakma eger herhangi bir ipucu varsa
+
+GRUP BOYUTU:
+- "tek", "yalniz", "bir kisi" = "tek"
+- "arkadasiyla", "annesiyle", "2 kisi", "iki kisi", "cifti" = "2_kisi"
+- "3 kisi", "grup", "aile", "3+", "arkadaslariyla" = "grup"
+- Sayi belirtilmisse ona gore sec
+
+URUN KATEGORILERI:
+- looked_at: musteri neye BAKTI (goz atti, ilgilendi, ellerine aldi)
+- Birden fazla kategori olabilir: ["elbise", "pantolon", "canta"]
+- Eger sadece satin aldiklari belirtilmis ve baska bir seye baktiginden bahsedilmemisse, satin aldigi kategoriyi looked_at'a da ekle
+- Urun isimleri: etek (skirt), elbise (dress), bluz (blouse/top), pantolon (pants), canta (bag/purse), sapka (hat), aksesuar (accessory), ceket (jacket), takim (set/outfit)
+
+DENEME (TRIED_ON):
+- "denedi", "kabine girdi", "fitting room", "uzerinde denedi", "giydi" = tried_on: true
+- tried_count: kac FARKLI urun denediyse o sayi. "2 tane denedi" = 2, "kabine girip denediler" = en az 2 (birden fazla oldugu anlasiliyor)
+- Grup olarak denedilerse, toplam denenen urun sayisini tahmin et
+
+SATIN ALMA:
+- purchased_items: ne aldiysa adet ile yaz. "4 tane etek" = ["4 etek"], "1 pantolon 2 bluz" = ["1 pantolon", "2 bluz"]
+- exact_amount: toplam odenen tutar (dolar). "50 dolar" = 50, "$35" = 35, "50 dolar civari" = 50
+- price_segment: "indirimli" = sale/discount/promosyon/buy X get Y free. "normal" = normal fiyat. "premium" = pahali urun. "karisik" = hem indirimli hem normal
+- amount_range: exact_amount'a gore otomatik sec
+
+FIYAT TEPKISI (satin almadiysa):
+- "pahali buldu", "pahali dedi", "fiyata baktı alamadı" = "pahali"
+- "pazarlik istedi", "indirim istedi" = "pazarlik"
+- Hicbir sey demediyse = "sormadi"
+
+RUH HALI:
+- Satin aldiysa ve olumsuz bir sey belirtilmediyse = "memnun"
+- "kararsiz kaldi", "dusunecegim dedi", "emin degildi" = "kararsiz"
+- "begenmedi", "mutsuz", "sikayetci" = "mutsuz"
+- Satin almadiysa ama olumsuz bir sey belirtilmediyse = "kararsiz"
+
+NOTES:
+- Musteri hakkinda ekstra bilgiler: nereden geldi, ne dedi, ozel durum, promosyon kullanimi vb.
+- Kisa ve oz yaz
+
+SADECE JSON dondur, aciklama yazma."""
 
 
 def parse_customer_text(text: str) -> dict | None:
