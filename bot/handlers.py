@@ -12,10 +12,14 @@ from services.claude_analyzer import (
     generate_weekly_report,
     generate_ai_analysis,
 )
+from services.claude_chat import get_chat_response, clear_chat_history
 
 # In-memory state for detailed entry mode (per user)
 # Key: chat_id, Value: {"state": int, "data": dict}
 user_sessions: dict[int, dict] = {}
+
+# Track which users are in AI chat mode
+ai_mode_users: set[int] = set()
 
 
 async def handle_update(bot: Bot, update: Update):
@@ -36,7 +40,12 @@ async def handle_update(bot: Bot, update: Update):
         await bot.send_message(chat_id=chat_id, text=msg.WELCOME)
     elif text == "/help":
         await bot.send_message(chat_id=chat_id, text=msg.HELP)
+    elif text == "/ai":
+        await handle_ai_mode_on(bot, chat_id)
+    elif text == "/musteri":
+        await handle_ai_mode_off(bot, chat_id)
     elif text == "/yeni":
+        ai_mode_users.discard(chat_id)
         await handle_new_entry(bot, chat_id)
     elif text == "/bugun":
         await handle_today_report(bot, chat_id)
@@ -48,14 +57,67 @@ async def handle_update(bot: Bot, update: Update):
         await handle_last_entries(bot, chat_id)
     elif text == "/sil":
         await handle_delete_last(bot, chat_id, username)
+    elif text.startswith("?"):
+        # Single AI question without switching modes
+        question = text[1:].strip()
+        if question:
+            await handle_ai_chat(bot, chat_id, question)
     else:
         # Check if user is in notes state of detailed mode
         session = user_sessions.get(chat_id)
         if session and session["state"] == kb.STATE_NOTES:
             await handle_notes_text(bot, chat_id, text, username)
+        elif chat_id in ai_mode_users:
+            # AI chat mode
+            await handle_ai_chat(bot, chat_id, text)
         else:
             # Quick mode: free text customer entry
             await handle_quick_entry(bot, chat_id, text, username)
+
+
+# --- AI Chat Mode ---
+
+async def handle_ai_mode_on(bot: Bot, chat_id: int):
+    """Enable AI chat mode."""
+    ai_mode_users.add(chat_id)
+    await bot.send_message(
+        chat_id=chat_id,
+        text="🤖 AI modu acildi! Benimle her konuda konusabilirsin.\n\n"
+             "Musteri kaydi yapmak icin /musteri yaz veya /yeni ile detayli gir.\n"
+             "Tek seferlik soru icin ? ile basla (ornek: ?bugun nasil satis yapabilirim)",
+    )
+
+
+async def handle_ai_mode_off(bot: Bot, chat_id: int):
+    """Disable AI chat mode, return to customer tracking."""
+    ai_mode_users.discard(chat_id)
+    clear_chat_history(chat_id)
+    await bot.send_message(
+        chat_id=chat_id,
+        text="📋 Musteri kayit moduna donuldu. Artik yazdigin mesajlar musteri kaydi olarak islenir.\n\n"
+             "AI ile konusmak icin /ai yaz.",
+    )
+
+
+async def handle_ai_chat(bot: Bot, chat_id: int, text: str):
+    """Handle AI chat message."""
+    try:
+        await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+    except Exception:
+        pass
+
+    response = get_chat_response(chat_id, text)
+
+    # Telegram message limit
+    try:
+        if len(response) > 4000:
+            parts = [response[i : i + 4000] for i in range(0, len(response), 4000)]
+            for part in parts:
+                await bot.send_message(chat_id=chat_id, text=part)
+        else:
+            await bot.send_message(chat_id=chat_id, text=response)
+    except Exception as e:
+        print(f"AI chat send error: {e}")
 
 
 # --- Quick Mode ---

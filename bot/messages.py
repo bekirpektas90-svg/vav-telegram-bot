@@ -2,35 +2,46 @@
 
 WELCOME = """👋 Hosgeldin VAV Customer Tracker'a!
 
-Bu bot ile magazaya gelen musterileri kayit altina alabilirsin.
+Bu bot ile magazaya gelen musterileri kayit altina alabilirsin ve AI asistanla konusabilirsin.
 
-📝 **IKI MOD:**
+📝 MUSTERI KAYDI:
+• Direkt yaz: "30lu hispanic kadin, elbise denedi, almadi"
+• /yeni — Butonlarla adim adim gir
 
-1️⃣ **Hizli Mod** — Direkt yaz:
-"30lu hispanic kadin, elbise denedi, pahali buldu, almadi"
+🤖 AI ASISTAN:
+• /ai — AI sohbet modunu ac (strateji, tavsiye, soru)
+• ?soru — Tek seferlik AI sorusu
 
-2️⃣ **Detayli Mod** — /yeni komutu ile adim adim
-
-📊 **RAPORLAR:**
-/bugun — Gunluk ozet
-/hafta — Haftalik trend
-/analiz — AI derinlemesine analiz
-/son — Son 5 kayit
-/sil — Son kaydi sil
+📊 RAPORLAR:
+• /bugun — Gunluk ozet
+• /hafta — Haftalik trend
+• /analiz — AI derinlemesine analiz
+• /son — Son 5 kayit
+• /sil — Son kaydi sil
 
 Haydi baslayalim! 🚀"""
 
-HELP = """📋 **VAV Bot Komutlari:**
+HELP = """📋 VAV Bot Komutlari:
 
+MUSTERI KAYDI:
 /yeni — Detayli musteri girisi (butonlarla)
+/musteri — Musteri kayit moduna don
+/son — Son 5 musteri kaydini goster
+/sil — Son girdiyi sil
+
+AI ASISTAN:
+/ai — AI sohbet modunu ac
+/musteri — AI modundan cik
+?soru — Tek seferlik AI sorusu (ornek: ?bugun nasil satis yapabilirim)
+
+RAPORLAR:
 /bugun — Bugunun ozet raporu
 /hafta — Haftalik trend raporu
 /analiz — AI destekli derin analiz
-/son — Son 5 musteri kaydini goster
-/sil — Son girdiyi sil
+
 /help — Bu yardim mesaji
 
-💡 **Hizli giris:** Komut yazmadan direkt musteri bilgisini yaz!
+💡 Hizli musteri girisi: Komut yazmadan direkt musteri bilgisini yaz!
 Ornek: "25 yasinda asian kiz, canta aldi 35$, memnundu"
 """
 
